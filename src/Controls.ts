@@ -19,19 +19,21 @@ export class Controls {
     const base = document.getElementById('joystick-base')!;
     const thumb = document.getElementById('joystick-thumb')!;
 
-    // Fixed joystick position (bottom-left)
+    // Center of joystick in screen coords (top/left with translate(-50%,-50%))
     const baseX = 100;
-    const getBaseY = () => window.innerHeight - 100;
+    const getBaseY = () => window.innerHeight - 130;
+
+    const positionAt = (el: HTMLElement, x: number, y: number) => {
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      el.style.bottom = 'auto';
+    };
 
     // Show base and thumb at fixed position
     base.style.display = 'block';
-    base.style.left = baseX + 'px';
-    base.style.bottom = '100px';
-    base.style.top = 'auto';
+    positionAt(base, baseX, getBaseY());
     thumb.style.display = 'block';
-    thumb.style.left = baseX + 'px';
-    thumb.style.bottom = '100px';
-    thumb.style.top = 'auto';
+    positionAt(thumb, baseX, getBaseY());
 
     const maxDist = 55;
 
@@ -51,10 +53,7 @@ export class Controls {
       this.touchActive = false;
       this.touchDir.x = 0;
       this.touchDir.z = 0;
-      // Reset thumb to center
-      thumb.style.left = baseX + 'px';
-      thumb.style.bottom = '100px';
-      thumb.style.top = 'auto';
+      positionAt(thumb, baseX, getBaseY());
     };
 
     zone.addEventListener('touchend', endTouch);
@@ -77,7 +76,6 @@ export class Controls {
 
     thumb.style.left = (baseX + clampedX) + 'px';
     thumb.style.top = (baseY + clampedY) + 'px';
-    thumb.style.bottom = 'auto';
 
     this.touchDir.x = clampedX / maxDist;
     this.touchDir.z = clampedY / maxDist;

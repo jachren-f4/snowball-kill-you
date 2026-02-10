@@ -147,7 +147,7 @@ export class Game {
     );
 
     // Update HUD
-    this.updateHUD();
+
   }
 
   private checkCollisions() {
@@ -179,27 +179,6 @@ export class Game {
     }
   }
 
-  private updateHUD() {
-    const diameter = this.ball.radius * 2;
-    document.getElementById('hud-size')!.textContent =
-      `Size: ${diameter.toFixed(1)}m`;
-
-    const collected = this.collectibles.filter((c) => c.collected).length;
-    const total = this.collectibles.length;
-    document.getElementById('hud-count')!.textContent =
-      `Items: ${collected} / ${total}`;
-
-    let comparison = 'Tennis Ball';
-    if (diameter >= 1.0) comparison = 'Soccer Ball';
-    if (diameter >= 2.0) comparison = 'Beach Ball';
-    if (diameter >= 3.0) comparison = 'Exercise Ball';
-    if (diameter >= 5.0) comparison = 'Go-Kart';
-    if (diameter >= 8.0) comparison = 'Small Car';
-    if (diameter >= 12.0) comparison = 'Elephant';
-    if (diameter >= 18.0) comparison = 'Bus';
-    if (diameter >= 25.0) comparison = 'House';
-    document.getElementById('hud-comparison')!.textContent = comparison;
-  }
 
   private onResize() {
     this.followCamera.camera.aspect =

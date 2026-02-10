@@ -9,21 +9,6 @@
     body { overflow: hidden; background: #000; touch-action: none; }
     canvas { display: block; width: 100vw; height: 100vh; }
 
-    #hud {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      color: white;
-      font-family: 'Arial Rounded MT Bold', Arial, sans-serif;
-      font-size: 16px;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-      pointer-events: none;
-      z-index: 10;
-    }
-    #hud .size { font-size: 24px; font-weight: bold; }
-    #hud .comparison { color: #ffd700; margin-top: 4px; }
-    #hud .count { margin-top: 8px; opacity: 0.8; }
-
     /* Joystick — hidden on desktop, visible on mobile */
     #joystick-zone {
       display: none;
@@ -43,9 +28,7 @@
       border: 3px solid rgba(255,255,255,0.25);
       transform: translate(-50%, -50%);
       pointer-events: none;
-      left: 100px;
-      bottom: 100px;
-      top: auto;
+      display: none;
     }
     #joystick-thumb {
       position: absolute;
@@ -56,9 +39,7 @@
       border: 3px solid rgba(255,255,255,0.5);
       transform: translate(-50%, -50%);
       pointer-events: none;
-      left: 100px;
-      bottom: 100px;
-      top: auto;
+      display: none;
     }
 
     #start-screen {
@@ -108,11 +89,6 @@
   </style>
 </head>
 <body>
-  <div id="hud">
-    <div class="size" id="hud-size">Size: 1.0m</div>
-    <div class="comparison" id="hud-comparison">Tennis Ball</div>
-    <div class="count" id="hud-count">Items: 0</div>
-  </div>
 
   <div id="joystick-zone">
     <div id="joystick-base"></div>
