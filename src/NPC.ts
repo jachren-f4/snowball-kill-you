@@ -8,6 +8,8 @@ export class NPC {
   private target = new THREE.Vector3();
   private retargetTimer = 0;
   private bobPhase = Math.random() * Math.PI * 2;
+  private facingAngle = 0;
+  private turnWobble = 0;
 
   constructor(
     model: THREE.Object3D,
@@ -60,8 +62,18 @@ export class NPC {
       pos.x += nx * this.speed * delta;
       pos.z += nz * this.speed * delta;
 
-      // Face movement direction
-      this.group.rotation.y = Math.atan2(nx, nz);
+      // Smooth turning with wobble
+      const targetAngle = Math.atan2(nx, nz);
+      let angleDiff = targetAngle - this.facingAngle;
+      // Wrap to [-PI, PI]
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      // Kick turn wobble when direction changes sharply
+      this.turnWobble += Math.abs(angleDiff) * 0.5;
+      this.turnWobble = Math.min(this.turnWobble, 1.5);
+      // Lerp toward target angle
+      this.facingAngle += angleDiff * Math.min(delta * 4, 1);
+      this.group.rotation.y = this.facingAngle;
     } else {
       this.pickTarget();
     }
@@ -71,14 +83,17 @@ export class NPC {
     pos.x = THREE.MathUtils.clamp(pos.x, -bounds, bounds);
     pos.z = THREE.MathUtils.clamp(pos.z, -bounds, bounds);
 
-    // Plushy waddle animation
-    this.bobPhase += delta * 6;
-    // Bounce up on each step
-    pos.y = Math.abs(Math.sin(this.bobPhase)) * 0.25;
-    // Side-to-side rock (main wobble)
-    this.group.rotation.z = Math.sin(this.bobPhase) * 0.18;
+    // Decay turn wobble
+    this.turnWobble *= Math.exp(-delta * 5);
+
+    // Plushy waddle animation (amplified during turns)
+    this.bobPhase += delta * (6 + this.turnWobble * 4);
+    // Bounce up on each step (higher during turns)
+    pos.y = Math.abs(Math.sin(this.bobPhase)) * (0.25 + this.turnWobble * 0.15);
+    // Side-to-side rock (main wobble, exaggerated during turns)
+    this.group.rotation.z = Math.sin(this.bobPhase) * (0.18 + this.turnWobble * 0.25);
     // Forward-back tilt synced with steps
-    this.group.rotation.x = Math.sin(this.bobPhase * 2) * 0.06;
+    this.group.rotation.x = Math.sin(this.bobPhase * 2) * (0.06 + this.turnWobble * 0.1);
   }
 
   getMesh(): THREE.Group {

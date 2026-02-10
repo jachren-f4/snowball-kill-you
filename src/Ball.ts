@@ -17,8 +17,9 @@ export class Ball {
   private yVelocity = 0;
   private gravity = -25;
   private grounded = true;
-  private speed = 40;
+  private baseSpeed = 40;
   private damping = 5;
+  private startRadius = 0.5;
   collectedCount = 0;
 
   // Stumble wobble
@@ -114,9 +115,13 @@ export class Ball {
   }
 
   update(direction: THREE.Vector3, delta: number) {
+    // Scale speed with ball growth: 50% compensation for perceived slowdown
+    const growthRatio = this.radius / this.startRadius;
+    const speed = this.baseSpeed * (1 + (Math.sqrt(growthRatio) - 1) * 0.5);
+
     if (direction.lengthSq() > 0.001) {
-      this.velocity.x += direction.x * this.speed * delta;
-      this.velocity.z += direction.z * this.speed * delta;
+      this.velocity.x += direction.x * speed * delta;
+      this.velocity.z += direction.z * speed * delta;
     }
 
     const dampFactor = Math.exp(-this.damping * delta);
