@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Snowball Kill You</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; touch-action: none; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+
+    #hud {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      color: white;
+      font-family: 'Arial Rounded MT Bold', Arial, sans-serif;
+      font-size: 16px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+      pointer-events: none;
+      z-index: 10;
+    }
+    #hud .size { font-size: 24px; font-weight: bold; }
+    #hud .comparison { color: #ffd700; margin-top: 4px; }
+    #hud .count { margin-top: 8px; opacity: 0.8; }
+
+    #joystick-zone {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 50%;
+      height: 40%;
+      z-index: 10;
+    }
+    #joystick-base {
+      display: none;
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      border: 2px solid rgba(255,255,255,0.3);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    #joystick-thumb {
+      display: none;
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.4);
+      border: 2px solid rgba(255,255,255,0.6);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    #start-screen {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      color: white;
+      font-family: 'Arial Rounded MT Bold', Arial, sans-serif;
+    }
+    #start-screen h1 {
+      font-size: 48px;
+      color: #ffd700;
+      text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+    }
+    #start-screen p {
+      margin-top: 16px;
+      font-size: 18px;
+      opacity: 0.8;
+    }
+    #start-screen .tap {
+      margin-top: 40px;
+      font-size: 22px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <div class="size" id="hud-size">Size: 1.0m</div>
+    <div class="comparison" id="hud-comparison">Tennis Ball</div>
+    <div class="count" id="hud-count">Items: 0</div>
+  </div>
+
+  <div id="joystick-zone">
+    <div id="joystick-base"></div>
+    <div id="joystick-thumb"></div>
+  </div>
+
+  <div id="start-screen">
+    <h1>Snowball Kill You</h1>
+    <p>Roll through the park and crush everything!</p>
+    <p class="tap">Loading models...</p>
+    <p style="margin-top: 20px; font-size: 14px; opacity: 0.5;">
+      WASD / Arrow keys or touch joystick to move
+    </p>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
