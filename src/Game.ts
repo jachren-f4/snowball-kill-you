@@ -4,6 +4,7 @@ import { FollowCamera } from './FollowCamera';
 import { Controls } from './Controls';
 import { createPark } from './Park';
 import { Collectible } from './types';
+import { NPC } from './NPC';
 
 export class Game {
   private scene: THREE.Scene;
@@ -12,6 +13,7 @@ export class Game {
   private ball: Ball;
   private controls: Controls;
   private collectibles: Collectible[] = [];
+  private npcs: NPC[] = [];
   private clock: THREE.Clock;
   private started = false;
   private loaded = false;
@@ -67,7 +69,9 @@ export class Game {
   }
 
   private async loadPark() {
-    this.collectibles = await createPark(this.scene);
+    const { collectibles, npcs } = await createPark(this.scene);
+    this.collectibles = collectibles;
+    this.npcs = npcs;
     this.loaded = true;
     const tap = document.querySelector('#start-screen .tap') as HTMLElement;
     if (tap) tap.textContent = 'Tap to Start';
@@ -134,6 +138,11 @@ export class Game {
 
     // Update ball
     this.ball.update(worldDir, delta);
+
+    // Update NPCs
+    for (const npc of this.npcs) {
+      npc.update(delta);
+    }
 
     // Check collisions
     this.checkCollisions();

@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
-import { Collectible } from './types';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { Collectible, NPCConfig } from './types';
+import { NPC } from './NPC';
 
 // === MATERIALS (environment only) ===
 const M = {
@@ -200,6 +202,141 @@ function randomModel(keys: (keyof typeof MODEL_PATHS)[], scale: number): THREE.O
   return getModel(key, scale);
 }
 
+// === NPC MODEL LOADING ===
+
+const gltfLoader = new GLTFLoader();
+const textureLoader = new THREE.TextureLoader();
+
+const NPC_CONFIGS: NPCConfig[] = [
+  {
+    name: 'Capuchino Assassino',
+    modelPath: 'models/brainrot/capuchino.glb',
+    size: 1.5,
+    speed: 2.0,
+    scale: 1.0, // calibrated at runtime
+    positions: [[-15, -20], [20, 15]],
+  },
+  {
+    name: 'Tralalero Tralala',
+    modelPath: 'models/brainrot/tralalero.fbx',
+    texturePath: 'models/brainrot/Tralala_Base_color.png',
+    size: 2.5,
+    speed: 1.5,
+    scale: 0.01, // FBX centimeter units
+    positions: [[25, -30], [-30, 25]],
+  },
+  {
+    name: 'La Vaca Saturno',
+    modelPath: 'models/brainrot/vaca_saturno.fbx',
+    texturePath: 'models/brainrot/La_Vaca_Base_color.png',
+    size: 3.5,
+    speed: 1.2,
+    scale: 0.01, // FBX centimeter units
+    positions: [[-35, -35]],
+  },
+];
+
+async function loadNPCModel(config: NPCConfig): Promise<THREE.Object3D> {
+  const isGLB = config.modelPath.endsWith('.glb');
+
+  let model: THREE.Object3D;
+
+  if (isGLB) {
+    const gltf = await new Promise<import('three/addons/loaders/GLTFLoader.js').GLTF>(
+      (resolve, reject) => {
+        gltfLoader.load(config.modelPath, resolve, undefined, reject);
+      },
+    );
+    model = gltf.scene;
+  } else {
+    model = await new Promise<THREE.Object3D>((resolve, reject) => {
+      fbxLoader.load(config.modelPath, resolve, undefined, reject);
+    });
+  }
+
+  // Apply base color texture for FBX models
+  if (config.texturePath) {
+    const texture = await new Promise<THREE.Texture>((resolve, reject) => {
+      textureLoader.load(config.texturePath!, resolve, undefined, reject);
+    });
+    texture.flipY = !isGLB; // FBX textures need flipY=true (default), GLB=false
+    texture.colorSpace = THREE.SRGBColorSpace;
+    model.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        const mat = new THREE.MeshStandardMaterial({
+          map: texture,
+          roughness: 0.8,
+          metalness: 0.0,
+        });
+        child.material = mat;
+      }
+    });
+  }
+
+  model.scale.setScalar(config.scale);
+
+  // Auto-calibrate scale to match target size
+  const box = new THREE.Box3().setFromObject(model);
+  const measuredSize = new THREE.Vector3();
+  box.getSize(measuredSize);
+  if (measuredSize.y > 0.01) {
+    const correctedScale = (config.size / measuredSize.y) * config.scale;
+    model.scale.setScalar(correctedScale);
+  }
+
+  // Lift model so its bottom sits at y=0
+  const finalBox = new THREE.Box3().setFromObject(model);
+  model.position.y = -finalBox.min.y;
+
+  // Enable shadows
+  model.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      child.castShadow = true;
+    }
+  });
+
+  return model;
+}
+
+function cloneNPCModel(original: THREE.Object3D): THREE.Object3D {
+  const clone = original.clone();
+  clone.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      // Share geometry and textures but clone material instances
+      if (Array.isArray(child.material)) {
+        child.material = child.material.map((m: THREE.Material) => m.clone());
+      } else {
+        child.material = child.material.clone();
+      }
+    }
+  });
+  return clone;
+}
+
+async function spawnNPCs(scene: THREE.Scene): Promise<NPC[]> {
+  const npcs: NPC[] = [];
+
+  for (const config of NPC_CONFIGS) {
+    let baseModel: THREE.Object3D | null = null;
+    try {
+      baseModel = await loadNPCModel(config);
+    } catch (e) {
+      console.warn(`[NPC] Failed to load ${config.name}:`, e);
+      continue;
+    }
+
+    for (let i = 0; i < config.positions.length; i++) {
+      const [x, z] = config.positions[i];
+      const model = i === 0 ? baseModel : cloneNPCModel(baseModel);
+      const npc = new NPC(model, config.size, config.name, config.speed, x, z);
+      scene.add(npc.getMesh());
+      npcs.push(npc);
+    }
+  }
+
+  return npcs;
+}
+
 // === ENVIRONMENT ===
 
 function createEnvironment(scene: THREE.Scene) {
@@ -225,6 +362,7 @@ function createEnvironment(scene: THREE.Scene) {
       (Math.random() - 0.5) * 80,
     );
     patch.rotation.z = Math.random() * Math.PI;
+    patch.receiveShadow = true;
     scene.add(patch);
   }
 
@@ -236,6 +374,7 @@ function createEnvironment(scene: THREE.Scene) {
     p.rotation.z = rot;
     p.scale.set(w, h, 1);
     p.position.set(x, 0.01, z);
+    p.receiveShadow = true;
     scene.add(p);
   };
   addPath(0, 0, 3, 96);
@@ -243,6 +382,7 @@ function createEnvironment(scene: THREE.Scene) {
   const circlePath = new THREE.Mesh(new THREE.RingGeometry(7, 9, 32), M.path);
   circlePath.rotation.x = -Math.PI / 2;
   circlePath.position.y = 0.01;
+  circlePath.receiveShadow = true;
   scene.add(circlePath);
   addPath(-15, -15, 2.5, 30, Math.PI / 4);
   addPath(15, 15, 2.5, 30, Math.PI / 4);
@@ -252,6 +392,7 @@ function createEnvironment(scene: THREE.Scene) {
   const pond = new THREE.Mesh(new THREE.CircleGeometry(6, 24), M.water);
   pond.rotation.x = -Math.PI / 2;
   pond.position.set(25, 0.02, -20);
+  pond.receiveShadow = true;
   scene.add(pond);
 
   // Pond edge rocks
@@ -327,7 +468,9 @@ interface ItemDef {
 
 // === MAIN ===
 
-export async function createPark(scene: THREE.Scene): Promise<Collectible[]> {
+export async function createPark(
+  scene: THREE.Scene,
+): Promise<{ collectibles: Collectible[]; npcs: NPC[] }> {
   await preloadModels();
 
   createEnvironment(scene);
@@ -512,5 +655,11 @@ export async function createPark(scene: THREE.Scene): Promise<Collectible[]> {
     }
   }
 
-  return collectibles;
+  // Spawn NPC characters
+  const npcs = await spawnNPCs(scene);
+  for (const npc of npcs) {
+    collectibles.push(npc.collectible);
+  }
+
+  return { collectibles, npcs };
 }
