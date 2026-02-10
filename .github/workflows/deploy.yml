@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: 22
       - run: rm -f package-lock.json && npm install
-      - run: npx vite build --base=/snowball-kill-you/
+      - run: npx vite build --base=/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
