@@ -1,3 +1,6 @@
+const isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
+  || ('ontouchstart' in window && window.innerWidth < 1024);
+
 export class Controls {
   private keys = new Set<string>();
   private touchDir = { x: 0, z: 0 };
@@ -6,58 +9,78 @@ export class Controls {
   constructor() {
     window.addEventListener('keydown', (e) => this.keys.add(e.key.toLowerCase()));
     window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
-    this.setupTouch();
+    if (isMobile) {
+      this.setupMobileJoystick();
+    }
   }
 
-  private setupTouch() {
+  private setupMobileJoystick() {
     const zone = document.getElementById('joystick-zone')!;
     const base = document.getElementById('joystick-base')!;
     const thumb = document.getElementById('joystick-thumb')!;
 
-    let startX = 0;
-    let startY = 0;
+    // Fixed joystick position (bottom-left)
+    const baseX = 100;
+    const getBaseY = () => window.innerHeight - 100;
+
+    // Show base and thumb at fixed position
+    base.style.display = 'block';
+    base.style.left = baseX + 'px';
+    base.style.bottom = '100px';
+    base.style.top = 'auto';
+    thumb.style.display = 'block';
+    thumb.style.left = baseX + 'px';
+    thumb.style.bottom = '100px';
+    thumb.style.top = 'auto';
+
+    const maxDist = 55;
 
     zone.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      const touch = e.touches[0];
-      startX = touch.clientX;
-      startY = touch.clientY;
-      base.style.display = 'block';
-      thumb.style.display = 'block';
-      base.style.left = startX + 'px';
-      base.style.top = startY + 'px';
-      thumb.style.left = startX + 'px';
-      thumb.style.top = startY + 'px';
       this.touchActive = true;
+      this.handleTouch(e.touches[0], baseX, getBaseY(), maxDist, thumb);
     });
 
     zone.addEventListener('touchmove', (e) => {
       e.preventDefault();
       if (!this.touchActive) return;
-      const touch = e.touches[0];
-      const dx = touch.clientX - startX;
-      const dy = touch.clientY - startY;
-      const maxDist = 50;
-      const dist = Math.min(Math.sqrt(dx * dx + dy * dy), maxDist);
-      const angle = Math.atan2(dy, dx);
-      const clampedX = Math.cos(angle) * dist;
-      const clampedY = Math.sin(angle) * dist;
-      thumb.style.left = startX + clampedX + 'px';
-      thumb.style.top = startY + clampedY + 'px';
-      this.touchDir.x = clampedX / maxDist;
-      this.touchDir.z = clampedY / maxDist;
+      this.handleTouch(e.touches[0], baseX, getBaseY(), maxDist, thumb);
     });
 
     const endTouch = () => {
       this.touchActive = false;
       this.touchDir.x = 0;
       this.touchDir.z = 0;
-      base.style.display = 'none';
-      thumb.style.display = 'none';
+      // Reset thumb to center
+      thumb.style.left = baseX + 'px';
+      thumb.style.bottom = '100px';
+      thumb.style.top = 'auto';
     };
 
     zone.addEventListener('touchend', endTouch);
     zone.addEventListener('touchcancel', endTouch);
+  }
+
+  private handleTouch(
+    touch: Touch,
+    baseX: number,
+    baseY: number,
+    maxDist: number,
+    thumb: HTMLElement,
+  ) {
+    const dx = touch.clientX - baseX;
+    const dy = touch.clientY - baseY;
+    const dist = Math.min(Math.sqrt(dx * dx + dy * dy), maxDist);
+    const angle = Math.atan2(dy, dx);
+    const clampedX = Math.cos(angle) * dist;
+    const clampedY = Math.sin(angle) * dist;
+
+    thumb.style.left = (baseX + clampedX) + 'px';
+    thumb.style.top = (baseY + clampedY) + 'px';
+    thumb.style.bottom = 'auto';
+
+    this.touchDir.x = clampedX / maxDist;
+    this.touchDir.z = clampedY / maxDist;
   }
 
   getDirection(): { x: number; z: number } {

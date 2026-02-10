@@ -24,35 +24,41 @@
     #hud .comparison { color: #ffd700; margin-top: 4px; }
     #hud .count { margin-top: 8px; opacity: 0.8; }
 
+    /* Joystick — hidden on desktop, visible on mobile */
     #joystick-zone {
+      display: none;
       position: fixed;
       bottom: 0;
       left: 0;
-      width: 50%;
-      height: 40%;
+      width: 100%;
+      height: 50%;
       z-index: 10;
     }
     #joystick-base {
-      display: none;
       position: absolute;
-      width: 120px;
-      height: 120px;
+      width: 130px;
+      height: 130px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.15);
-      border: 2px solid rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.1);
+      border: 3px solid rgba(255,255,255,0.25);
       transform: translate(-50%, -50%);
       pointer-events: none;
+      left: 100px;
+      bottom: 100px;
+      top: auto;
     }
     #joystick-thumb {
-      display: none;
       position: absolute;
-      width: 50px;
-      height: 50px;
+      width: 56px;
+      height: 56px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.4);
-      border: 2px solid rgba(255,255,255,0.6);
+      background: rgba(255,255,255,0.35);
+      border: 3px solid rgba(255,255,255,0.5);
       transform: translate(-50%, -50%);
       pointer-events: none;
+      left: 100px;
+      bottom: 100px;
+      top: auto;
     }
 
     #start-screen {
@@ -82,9 +88,22 @@
       font-size: 22px;
       animation: pulse 2s infinite;
     }
+    #start-screen .controls-hint { display: none; }
     @keyframes pulse {
       0%, 100% { opacity: 0.5; }
       50% { opacity: 1; }
+    }
+
+    /* Mobile styles */
+    @media (hover: none) and (pointer: coarse) {
+      #joystick-zone { display: block; }
+      #start-screen .controls-hint.mobile { display: block; }
+      #start-screen .controls-hint.desktop { display: none; }
+    }
+    @media (hover: hover) and (pointer: fine) {
+      #joystick-zone { display: none; }
+      #start-screen .controls-hint.mobile { display: none; }
+      #start-screen .controls-hint.desktop { display: block; }
     }
   </style>
 </head>
@@ -104,8 +123,11 @@
     <h1>Snowball Kill You</h1>
     <p>Roll through the park and crush everything!</p>
     <p class="tap">Loading models...</p>
-    <p style="margin-top: 20px; font-size: 14px; opacity: 0.5;">
-      WASD / Arrow keys or touch joystick to move
+    <p class="controls-hint desktop" style="margin-top: 20px; font-size: 14px; opacity: 0.5;">
+      WASD / Arrow keys to move
+    </p>
+    <p class="controls-hint mobile" style="margin-top: 20px; font-size: 14px; opacity: 0.5;">
+      Use the joystick to move
     </p>
   </div>
 
