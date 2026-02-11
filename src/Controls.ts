@@ -19,6 +19,10 @@ export class Controls {
     const base = document.getElementById('joystick-base')!;
     const thumb = document.getElementById('joystick-thumb')!;
 
+    // Force-show joystick zone via JS — CSS media queries can fail on
+    // Samsung devices (S-Pen reports hover:hover / pointer:fine)
+    zone.style.display = 'block';
+
     // Center of joystick in screen coords (top/left with translate(-50%,-50%))
     const baseX = 100;
     const getBaseY = () => window.innerHeight - 130;

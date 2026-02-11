@@ -23,6 +23,13 @@ export class Game {
   private sun!: THREE.DirectionalLight;
   private terrain: Terrain | null = null;
 
+  // NPC collection sounds
+  private npcSounds: Record<string, HTMLAudioElement> = {
+    'Capuchino Assassino': new Audio('sounds/capuchino.mp3'),
+    'Tralalero Tralala': new Audio('sounds/tralalero.mp3'),
+    'La Vaca Saturno': new Audio('sounds/lavaca.mp3'),
+  };
+
   // Multiplayer
   private network: Network | null = null;
   private remoteBall: RemoteBall | null = null;
@@ -225,6 +232,7 @@ export class Game {
 
     // Remote player collected this item
     item.collected = true;
+    this.playNPCSound(item.name);
 
     if (this.remoteBall) {
       // Reparent mesh to remote ball (handles case where we also grabbed it locally —
@@ -394,6 +402,7 @@ export class Game {
           // Small enough — collect it
           item.collected = true;
           this.ball.attachItem(item.mesh, itemPos, item.size);
+          this.playNPCSound(item.name);
 
           // Send collect event to remote player
           if (this.network?.connected) {
@@ -410,6 +419,13 @@ export class Game {
         }
       }
     }
+  }
+
+  private playNPCSound(name: string) {
+    const audio = this.npcSounds[name];
+    if (!audio) return;
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
   }
 
   private onResize() {
