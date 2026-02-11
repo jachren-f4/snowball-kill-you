@@ -8,6 +8,7 @@ import { NPC } from './NPC';
 import { Terrain } from './Terrain';
 import { Network, BallState, CollectEvent } from './Network';
 import { RemoteBall } from './RemoteBall';
+import { SkiJumpResult } from './SkiJump';
 
 export class Game {
   private scene: THREE.Scene;
@@ -22,6 +23,7 @@ export class Game {
   private loaded = false;
   private sun!: THREE.DirectionalLight;
   private terrain: Terrain | null = null;
+  private skiJump: SkiJumpResult | null = null;
 
   // NPC collection sounds
   private npcSounds: Record<string, HTMLAudioElement> = {
@@ -39,7 +41,7 @@ export class Game {
     // Scene
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x87ceeb);
-    this.scene.fog = new THREE.FogExp2(0x87ceeb, 0.008);
+    this.scene.fog = new THREE.FogExp2(0x87ceeb, 0.004);
 
     // Renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -244,13 +246,28 @@ export class Game {
   }
 
   private async loadLevel() {
-    const { collectibles, npcs, terrain } = await createHillLevel(this.scene);
+    const { collectibles, npcs, terrain, skiJump } = await createHillLevel(this.scene);
     this.collectibles = collectibles;
     this.npcs = npcs;
     this.terrain = terrain;
+    this.skiJump = skiJump;
 
-    // Wire terrain ground query to ball and camera
-    const groundQuery = (x: number, z: number) => terrain.getGroundInfo(x, z);
+    // Composite ground query: ski jump structures override terrain when higher
+    const groundQuery = (x: number, z: number) => {
+      const terrainInfo = terrain.getGroundInfo(x, z);
+      let best = terrainInfo;
+
+      const elevInfo = skiJump.elevator.getGroundInfo(x, z);
+      if (elevInfo && elevInfo.height > best.height) best = elevInfo;
+
+      const platInfo = skiJump.topPlatform.getGroundInfo(x, z);
+      if (platInfo && platInfo.height > best.height) best = platInfo;
+
+      const rampInfo = skiJump.ramp.getGroundInfo(x, z);
+      if (rampInfo && rampInfo.height > best.height) best = rampInfo;
+
+      return best;
+    };
     this.ball.setGroundQuery(groundQuery);
     this.followCamera.setGroundQuery(groundQuery);
 
@@ -268,15 +285,15 @@ export class Game {
     this.scene.add(ambient);
 
     this.sun = new THREE.DirectionalLight(0xfff5e0, 2.0);
-    this.sun.position.set(20, 30, 10);
+    this.sun.position.set(40, 60, 20);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
     this.sun.shadow.camera.near = 0.5;
-    this.sun.shadow.camera.far = 100;
-    this.sun.shadow.camera.left = -50;
-    this.sun.shadow.camera.right = 50;
-    this.sun.shadow.camera.top = 50;
-    this.sun.shadow.camera.bottom = -50;
+    this.sun.shadow.camera.far = 200;
+    this.sun.shadow.camera.left = -100;
+    this.sun.shadow.camera.right = 100;
+    this.sun.shadow.camera.top = 100;
+    this.sun.shadow.camera.bottom = -100;
     this.scene.add(this.sun);
     this.scene.add(this.sun.target);
 
@@ -297,9 +314,9 @@ export class Game {
       // Slowly rotate camera around the park before start
       const t = this.clock.elapsedTime * 0.1;
       this.followCamera.camera.position.set(
-        Math.sin(t) * 20,
+        Math.sin(t) * 40,
         12,
-        Math.cos(t) * 20,
+        Math.cos(t) * 40,
       );
       this.followCamera.camera.lookAt(0, 3, 0);
     }
@@ -322,6 +339,11 @@ export class Game {
       0,
       input.x * camRight.z - input.z * camDir.z,
     );
+
+    // Update ski jump elevator
+    if (this.skiJump) {
+      this.skiJump.elevator.update(delta);
+    }
 
     // Update ball
     this.ball.update(worldDir, delta);
@@ -349,7 +371,7 @@ export class Game {
 
     // Make sun follow ball for proper shadows on hills
     const ballPos = this.ball.getPosition();
-    this.sun.position.set(ballPos.x + 20, ballPos.y + 30, ballPos.z + 10);
+    this.sun.position.set(ballPos.x + 40, ballPos.y + 60, ballPos.z + 20);
     this.sun.target.position.copy(ballPos);
 
     // Network sync

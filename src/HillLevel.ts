@@ -6,6 +6,7 @@ import {
   preloadModels, getModel, randomModel, spawnNPCs,
   spread, grid,
 } from './models';
+import { createSkiJumpTower, SkiJumpResult } from './SkiJump';
 
 // === NPC CONFIGS (placed on flat sections) ===
 
@@ -16,7 +17,7 @@ const NPC_CONFIGS: NPCConfig[] = [
     size: 1.5,
     speed: 2.0,
     scale: 1.0,
-    positions: [[-15, -20], [10, -10]],
+    positions: [[-30, -40], [20, -20]],
   },
   {
     name: 'Tralalero Tralala',
@@ -25,7 +26,7 @@ const NPC_CONFIGS: NPCConfig[] = [
     size: 2.5,
     speed: 1.5,
     scale: 0.01,
-    positions: [[-30, -30], [30, -30]],
+    positions: [[-60, -60], [60, -60]],
   },
   {
     name: 'La Vaca Saturno',
@@ -34,7 +35,7 @@ const NPC_CONFIGS: NPCConfig[] = [
     size: 3.5,
     speed: 1.2,
     scale: 0.01,
-    positions: [[-35, -10]],
+    positions: [[-70, -20]],
   },
 ];
 
@@ -74,19 +75,19 @@ interface ItemDef {
 
 export async function createHillLevel(
   scene: THREE.Scene,
-): Promise<{ collectibles: Collectible[]; npcs: NPC[]; terrain: Terrain }> {
+): Promise<{ collectibles: Collectible[]; npcs: NPC[]; terrain: Terrain; skiJump: SkiJumpResult }> {
   await preloadModels();
 
   const terrain = new Terrain(scene);
   const getY = (x: number, z: number) => terrain.getHeight(x, z);
 
   // Perimeter hedges (at terrain height)
-  for (let i = -48; i <= 48; i += 3) {
+  for (let i = -100; i <= 100; i += 6) {
     for (const pos of [
-      [i, -49],
-      [i, 49],
-      [-49, i],
-      [49, i],
+      [i, -101],
+      [i, 101],
+      [-101, i],
+      [101, i],
     ] as [number, number][]) {
       const hedge = randomModel(
         ['qBush1', 'qBush2', 'qBushBerries1', 'qBushBerries2'],
@@ -98,9 +99,9 @@ export async function createHillLevel(
   }
 
   // Decorative grass tufts (non-collectible)
-  for (let i = 0; i < 80; i++) {
-    const x = (Math.random() - 0.5) * 90;
-    const z = (Math.random() - 0.5) * 90;
+  for (let i = 0; i < 200; i++) {
+    const x = (Math.random() - 0.5) * 180;
+    const z = (Math.random() - 0.5) * 180;
     const g = randomModel(['qGrass', 'qGrass2'], 0.008 + Math.random() * 0.005);
     g.position.set(x, getY(x, z), z);
     g.rotation.y = Math.random() * Math.PI * 2;
@@ -108,7 +109,7 @@ export async function createHillLevel(
   }
 
   // Flag on hilltop
-  createFlag(scene, 20, 25, getY(20, 25));
+  createFlag(scene, 40, 50, getY(40, 50));
 
   const collectibles: Collectible[] = [];
 
@@ -118,12 +119,15 @@ export async function createHillLevel(
       size: 0.15,
       name: 'Flowers',
       positions: [
-        ...spread(0, 25, 8, 8),
-        ...spread(-5, 22, 6, 5),
-        ...spread(5, 28, 6, 5),
+        ...spread(0, 50, 16, 12),
+        ...spread(-10, 44, 12, 8),
+        ...spread(10, 56, 12, 8),
         // Flat area flowers
-        ...spread(0, -5, 8, 6),
-        ...spread(-15, -20, 6, 4),
+        ...spread(0, -10, 16, 9),
+        ...spread(-30, -40, 12, 6),
+        // Outer region flowers
+        ...spread(60, -60, 16, 8),
+        ...spread(-60, 60, 16, 8),
       ],
       randomRotY: true,
     },
@@ -132,8 +136,11 @@ export async function createHillLevel(
       size: 0.1,
       name: 'Grass Tuft',
       positions: [
-        ...grid(-8, 8, 19, 31, 10),
-        ...grid(-30, 30, -35, -5, 12),
+        ...grid(-16, 16, 38, 62, 15),
+        ...grid(-60, 60, -70, -10, 18),
+        // Outer regions
+        ...grid(50, 90, -80, -20, 10),
+        ...grid(-90, -50, 20, 80, 10),
       ],
       randomRotY: true,
     },
@@ -142,9 +149,12 @@ export async function createHillLevel(
       size: 0.35,
       name: 'Plant',
       positions: [
-        ...spread(0, 25, 10, 8),
-        ...spread(-3, 20, 5, 4),
-        ...grid(-30, 30, -30, 0, 6),
+        ...spread(0, 50, 20, 12),
+        ...spread(-6, 40, 10, 6),
+        ...grid(-60, 60, -60, 0, 9),
+        // Outer regions
+        ...grid(50, 90, 20, 80, 6),
+        ...grid(-90, -50, -80, -20, 6),
       ],
       randomRotY: true,
     },
@@ -153,8 +163,11 @@ export async function createHillLevel(
       size: 0.3,
       name: 'Small Rock',
       positions: [
-        ...spread(0, 25, 10, 6),
-        ...grid(-35, 35, -35, -5, 8),
+        ...spread(0, 50, 20, 9),
+        ...grid(-70, 70, -70, -10, 12),
+        // Outer regions
+        ...grid(50, 90, -90, -30, 6),
+        ...grid(-90, -50, 30, 90, 6),
       ],
       randomRotY: true,
     },
@@ -164,14 +177,22 @@ export async function createHillLevel(
       create: () => randomModel(['qRock1', 'qRock2', 'qRock3', 'qRock4', 'qRock5'], 0.01),
       size: 0.6,
       name: 'Rock',
-      positions: [[-3, 23], [4, 27], [-6, 26], [2, 22], [-30, -20], [25, -15]],
+      positions: [
+        [-6, 46], [8, 54], [-12, 52], [4, 44], [-60, -40], [50, -30],
+        // Outer regions
+        [70, -50], [-70, 50], [80, 40], [-80, -60],
+      ],
       randomRotY: true,
     },
     {
       create: () => randomModel(['qWoodLog', 'qWoodLogMoss'], 0.01),
       size: 0.8,
       name: 'Wood Log',
-      positions: [[-4, 24], [3, 26], [-20, -10], [15, -25], [-35, 15]],
+      positions: [
+        [-8, 48], [6, 52], [-40, -20], [30, -50], [-70, 30],
+        // Outer regions
+        [60, 60], [-60, -70], [75, -20],
+      ],
       randomRotY: true,
     },
     {
@@ -179,8 +200,11 @@ export async function createHillLevel(
       size: 0.8,
       name: 'Small Bush',
       positions: [
-        ...spread(0, 25, 8, 4),
-        ...grid(-35, 35, -35, -5, 6),
+        ...spread(0, 50, 16, 6),
+        ...grid(-70, 70, -70, -10, 9),
+        // Outer regions
+        ...grid(50, 90, 30, 90, 5),
+        ...grid(-90, -50, -90, -30, 5),
       ],
       randomRotY: true,
     },
@@ -188,7 +212,11 @@ export async function createHillLevel(
       create: () => randomModel(['qTreeStump', 'qTreeStumpMoss'], 0.01),
       size: 0.8,
       name: 'Tree Stump',
-      positions: [[5, 24], [-5, 28], [-18, -8], [22, -20], [-30, 5]],
+      positions: [
+        [10, 48], [-10, 56], [-36, -16], [44, -40], [-60, 10],
+        // Outer regions
+        [70, 30], [-80, -40], [50, -70],
+      ],
       randomRotY: true,
     },
 
@@ -197,14 +225,14 @@ export async function createHillLevel(
       create: () => randomModel(['qRockMoss1', 'qRockMoss2', 'qRockMoss3'], 0.01),
       size: 0.7,
       name: 'Mossy Rock',
-      positions: [[15, 20], [25, 20], [18, 30], [22, 32]],
+      positions: [[30, 40], [50, 40], [36, 60], [44, 64]],
       randomRotY: true,
     },
     {
       create: () => randomModel(['qBush1', 'qBush2', 'qBushBerries1', 'qBushBerries2'], 0.015),
       size: 1.0,
       name: 'Bush',
-      positions: [[12, 22], [28, 22], [15, 28]],
+      positions: [[24, 44], [56, 44], [30, 56]],
       randomRotY: true,
     },
 
@@ -213,7 +241,7 @@ export async function createHillLevel(
       create: () => randomModel(['qBush1', 'qBush2', 'qBushBerries1', 'qBushBerries2'], 0.025),
       size: 2.0,
       name: 'Large Bush',
-      positions: [[18, 25], [22, 26], [20, 23]],
+      positions: [[36, 50], [44, 52], [40, 46]],
       randomRotY: true,
     },
     {
@@ -222,7 +250,7 @@ export async function createHillLevel(
       ], 0.02),
       size: 2.0,
       name: 'Large Rock',
-      positions: [[21, 27], [17, 24]],
+      positions: [[42, 54], [34, 48]],
       randomRotY: true,
     },
 
@@ -232,7 +260,9 @@ export async function createHillLevel(
       size: 2.0,
       name: 'Large Bush',
       positions: [
-        [-12, -8], [14, -12], [-18, 15], [-28, -18], [32, -12], [10, -35],
+        [-24, -16], [28, -24], [-36, 30], [-56, -36], [64, -24], [20, -70],
+        // Outer regions
+        [70, 50], [-70, -50], [80, -80], [-80, 70],
       ],
       randomRotY: true,
     },
@@ -242,7 +272,11 @@ export async function createHillLevel(
       ], 0.02),
       size: 2.0,
       name: 'Large Rock',
-      positions: [[-33, -20], [36, -25], [-38, 10]],
+      positions: [
+        [-66, -40], [72, -50], [-76, 20],
+        // Outer regions
+        [85, 30], [-85, -70], [60, 80],
+      ],
       randomRotY: true,
     },
 
@@ -255,8 +289,10 @@ export async function createHillLevel(
       size: 3.0,
       name: 'Birch Tree',
       positions: [
-        [6, -5], [-6, -8], [-10, -15], [15, -8],
-        [-22, -5], [25, -5], [30, 5], [-30, -25],
+        [12, -10], [-12, -16], [-20, -30], [30, -16],
+        [-44, -10], [50, -10], [60, 10], [-60, -50],
+        // Outer regions
+        [75, -40], [-75, 40], [80, 60], [-85, -25],
       ],
       randomRotY: true,
     },
@@ -268,8 +304,10 @@ export async function createHillLevel(
       size: 4.0,
       name: 'Tree',
       positions: [
-        [-20, -20], [20, -22], [-32, 0], [32, -8],
-        [-18, -35], [-35, 25], [35, -25], [-10, 35],
+        [-30, -40], [40, -44], [-64, 0], [64, -16],
+        [-36, -70], [-70, 50], [70, -50], [-20, 70],
+        // Outer regions
+        [80, 30], [-80, -30], [50, 85], [-50, -85],
       ],
       randomRotY: true,
     },
@@ -280,7 +318,11 @@ export async function createHillLevel(
       ], 0.035),
       size: 4.5,
       name: 'Pine Tree',
-      positions: [[-38, -20], [38, 20], [30, -38], [-42, 15]],
+      positions: [
+        [-76, -40], [76, 40], [60, -76], [-84, 30],
+        // Outer regions
+        [85, -70], [-90, 60], [70, 70], [-60, -80],
+      ],
       randomRotY: true,
     },
     {
@@ -290,7 +332,9 @@ export async function createHillLevel(
       size: 5.5,
       name: 'Willow Tree',
       positions: [
-        [-35, -35], [35, -35], [-40, 0], [0, -40],
+        [-85, -85], [70, -70], [-80, 0], [0, -80],
+        // Outer regions
+        [80, 80], [-85, 50], [90, -30],
       ],
       randomRotY: true,
     },
@@ -301,8 +345,8 @@ export async function createHillLevel(
       size: 0.35,
       name: 'Plant',
       positions: [
-        ...spread(-10, 10, 6, 5),
-        ...spread(-10, 7, 4, 3),
+        ...spread(-20, 20, 12, 8),
+        ...spread(-20, 14, 8, 5),
       ],
       randomRotY: true,
     },
@@ -310,7 +354,7 @@ export async function createHillLevel(
       create: () => randomModel(['qRock1', 'qRock2', 'qRock3'], 0.008),
       size: 0.5,
       name: 'Rock',
-      positions: [[-12, 10], [-8, 10], [-10, 12], [-10, 8]],
+      positions: [[-24, 20], [-16, 20], [-20, 24], [-20, 16]],
       randomRotY: true,
     },
 
@@ -320,9 +364,9 @@ export async function createHillLevel(
       size: 0.15,
       name: 'Flowers',
       positions: [
-        ...spread(-20, -15, 8, 6),
-        ...spread(15, -25, 6, 4),
-        ...spread(-25, 20, 8, 5),
+        ...spread(-40, -30, 16, 9),
+        ...spread(30, -50, 12, 6),
+        ...spread(-50, 40, 16, 8),
       ],
       randomRotY: true,
     },
@@ -330,7 +374,11 @@ export async function createHillLevel(
       create: () => randomModel(['qBushBerries1', 'qBushBerries2'], 0.012),
       size: 0.8,
       name: 'Berry Bush',
-      positions: [[-20, -15], [-22, -13], [15, -25], [13, -23], [-25, 20], [-27, 18]],
+      positions: [
+        [-40, -30], [-44, -26], [30, -50], [26, -46], [-50, 40], [-54, 36],
+        // Outer regions
+        [70, 20], [-70, -60],
+      ],
       randomRotY: true,
     },
   ];
@@ -370,5 +418,8 @@ export async function createHillLevel(
     collectibles.push(npc.collectible);
   }
 
-  return { collectibles, npcs, terrain };
+  // Build ski jump tower
+  const skiJump = createSkiJumpTower(scene, getY);
+
+  return { collectibles, npcs, terrain, skiJump };
 }

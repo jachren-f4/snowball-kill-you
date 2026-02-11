@@ -45,7 +45,7 @@ export class NPC {
   }
 
   private pickTarget() {
-    const bounds = 44;
+    const bounds = 96;
     this.target.set(
       (Math.random() - 0.5) * bounds * 2,
       0,
@@ -99,7 +99,7 @@ export class NPC {
     }
 
     // Clamp to bounds
-    const bounds = 44;
+    const bounds = 96;
     pos.x = THREE.MathUtils.clamp(pos.x, -bounds, bounds);
     pos.z = THREE.MathUtils.clamp(pos.z, -bounds, bounds);
 

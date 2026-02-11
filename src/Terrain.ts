@@ -11,8 +11,8 @@ export class Terrain {
   private mesh: THREE.Mesh;
 
   constructor(scene: THREE.Scene) {
-    const size = 100;
-    const segments = 200;
+    const size = 200;
+    const segments = 300;
     const geo = new THREE.PlaneGeometry(size, size, segments, segments);
     geo.rotateX(-Math.PI / 2);
 
@@ -55,15 +55,15 @@ export class Terrain {
     let h = 0;
 
     // Big hill in one quadrant
-    h += gaussian(x, z, 20, 25, 18, 18, 12);
+    h += gaussian(x, z, 40, 50, 36, 36, 12);
 
     // Small rolling hills
-    h += gaussian(x, z, -20, -15, 10, 10, 4);
-    h += gaussian(x, z, 15, -25, 8, 8, 3);
-    h += gaussian(x, z, -25, 20, 12, 12, 5);
+    h += gaussian(x, z, -40, -30, 20, 20, 4);
+    h += gaussian(x, z, 30, -50, 16, 16, 3);
+    h += gaussian(x, z, -50, 40, 24, 24, 5);
 
     // Ramp ridge (narrow along Z for a launch ramp feel)
-    h += gaussian(x, z, -10, 10, 8, 3, 6);
+    h += gaussian(x, z, -20, 20, 16, 6, 6);
 
     return h;
   }

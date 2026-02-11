@@ -27,7 +27,7 @@ export class Ball {
   private damping = 5;
   private startRadius = 0.5;
   collectedCount = 0;
-  bounds = 48;
+  bounds = 100;
 
   // Ground query for terrain support
   private groundQuery: GroundQuery = DEFAULT_GROUND_QUERY;
@@ -166,11 +166,18 @@ export class Ball {
     const pos = this.pivot.position;
 
     if (this.grounded) {
-      // When grounded, bypass vertical gravity — snap directly to terrain surface
-      // Ball only goes airborne from stumble events (which set grounded=false directly)
+      // When grounded, snap directly to terrain surface
       const groundY = this.groundQuery(pos.x, pos.z).height + this.radius;
-      pos.y = groundY;
-      this.yVelocity = 0;
+
+      // Airborne detection: if ball is significantly above ground (e.g. rolled off ramp end),
+      // go airborne and preserve horizontal velocity for a parabolic arc
+      if (pos.y > groundY + 1.5) {
+        this.grounded = false;
+        this.yVelocity = 0; // no initial vertical velocity — pure freefall
+      } else {
+        pos.y = groundY;
+        this.yVelocity = 0;
+      }
     } else {
       // Airborne: apply vertical gravity
       this.yVelocity += this.gravity * delta;
