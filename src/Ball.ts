@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GroundQuery } from './types';
 
 // Snow trail particle
 interface SnowParticle {
@@ -6,6 +7,11 @@ interface SnowParticle {
   life: number;
   maxLife: number;
 }
+
+const DEFAULT_GROUND_QUERY: GroundQuery = () => ({
+  height: 0,
+  normal: new THREE.Vector3(0, 1, 0),
+});
 
 export class Ball {
   private pivot: THREE.Group;
@@ -21,6 +27,10 @@ export class Ball {
   private damping = 5;
   private startRadius = 0.5;
   collectedCount = 0;
+  bounds = 48;
+
+  // Ground query for terrain support
+  private groundQuery: GroundQuery = DEFAULT_GROUND_QUERY;
 
   // Stumble wobble
   private wobbleAngle = 0;
@@ -106,6 +116,10 @@ export class Ball {
     });
   }
 
+  setGroundQuery(query: GroundQuery) {
+    this.groundQuery = query;
+  }
+
   getPosition(): THREE.Vector3 {
     return this.pivot.position.clone();
   }
@@ -114,49 +128,77 @@ export class Ball {
     return this.velocity.clone();
   }
 
+  getRotatorQuaternion(): THREE.Quaternion {
+    return this.rotator.quaternion.clone();
+  }
+
   update(direction: THREE.Vector3, delta: number) {
-    // Scale speed with ball growth: 50% compensation for perceived slowdown
+    // Bigger ball = harder to push manually (inverse sqrt scaling)
+    // Downhill speed is unaffected — only player input gets weaker
     const growthRatio = this.radius / this.startRadius;
-    const speed = this.baseSpeed * (1 + (Math.sqrt(growthRatio) - 1) * 0.5);
+    const moveSpeed = this.baseSpeed * Math.pow(this.startRadius / this.radius, 0.5);
 
     if (direction.lengthSq() > 0.001) {
-      this.velocity.x += direction.x * speed * delta;
-      this.velocity.z += direction.z * speed * delta;
+      this.velocity.x += direction.x * moveSpeed * delta;
+      this.velocity.z += direction.z * moveSpeed * delta;
     }
 
+    // Slope physics: when grounded, gravity has a horizontal component on slopes
+    // This force is size-independent — all balls accelerate the same downhill
+    const groundInfo = this.groundQuery(this.pivot.position.x, this.pivot.position.z);
+    if (this.grounded) {
+      const normal = groundInfo.normal;
+      const gravVec = new THREE.Vector3(0, this.gravity, 0);
+      const normalForce = normal.clone().multiplyScalar(gravVec.dot(normal));
+      const slopeForce = gravVec.clone().sub(normalForce);
+      const slopeMult = 2.5;
+      this.velocity.x += slopeForce.x * slopeMult * delta;
+      this.velocity.z += slopeForce.z * slopeMult * delta;
+    }
+
+    // Constant damping — doesn't scale with ball size so downhill speed is preserved
     const dampFactor = Math.exp(-this.damping * delta);
     this.velocity.multiplyScalar(dampFactor);
 
     this.pivot.position.x += this.velocity.x * delta;
     this.pivot.position.z += this.velocity.z * delta;
 
-    // Vertical physics (gravity + hop)
-    this.yVelocity += this.gravity * delta;
-    this.pivot.position.y += this.yVelocity * delta;
+    const pos = this.pivot.position;
 
-    // Ground check
-    if (this.pivot.position.y <= this.radius) {
-      this.pivot.position.y = this.radius;
-      if (this.yVelocity < -1) {
-        // Small bounce on landing
-        this.yVelocity = -this.yVelocity * 0.2;
-      } else {
-        this.yVelocity = 0;
-        this.grounded = true;
-      }
+    if (this.grounded) {
+      // When grounded, bypass vertical gravity — snap directly to terrain surface
+      // Ball only goes airborne from stumble events (which set grounded=false directly)
+      const groundY = this.groundQuery(pos.x, pos.z).height + this.radius;
+      pos.y = groundY;
+      this.yVelocity = 0;
     } else {
-      this.grounded = false;
+      // Airborne: apply vertical gravity
+      this.yVelocity += this.gravity * delta;
+      pos.y += this.yVelocity * delta;
+
+      // Check if we've hit ground
+      const groundY = this.groundQuery(pos.x, pos.z).height + this.radius;
+      if (pos.y <= groundY) {
+        pos.y = groundY;
+        if (this.yVelocity < -1) {
+          // Small bounce on landing
+          this.yVelocity = -this.yVelocity * 0.2;
+        } else {
+          this.yVelocity = 0;
+          this.grounded = true;
+        }
+      }
     }
 
     // Rolling rotation
-    const speed = this.velocity.length();
-    if (speed > 0.01) {
+    const velSpeed = this.velocity.length();
+    if (velSpeed > 0.01) {
       const axis = new THREE.Vector3(
         this.velocity.z,
         0,
         -this.velocity.x,
       ).normalize();
-      const angle = (speed * delta) / this.radius;
+      const angle = (velSpeed * delta) / this.radius;
       this.rotator.rotateOnWorldAxis(axis, angle);
     }
 
@@ -175,20 +217,19 @@ export class Ball {
     }
 
     // Keep in bounds
-    const bounds = 48;
     this.pivot.position.x = THREE.MathUtils.clamp(
       this.pivot.position.x,
-      -bounds,
-      bounds,
+      -this.bounds,
+      this.bounds,
     );
     this.pivot.position.z = THREE.MathUtils.clamp(
       this.pivot.position.z,
-      -bounds,
-      bounds,
+      -this.bounds,
+      this.bounds,
     );
 
     // Snow trail
-    this.updateTrail(delta, speed);
+    this.updateTrail(delta, velSpeed);
   }
 
   private updateTrail(delta: number, speed: number) {
@@ -209,7 +250,7 @@ export class Ball {
         const t = p.life / p.maxLife;
         const baseS = p.mesh.userData.baseScale;
         p.mesh.scale.set(baseS * (0.3 + 0.7 * t), baseS * 0.4 * t, baseS * (0.3 + 0.7 * t));
-        p.mesh.position.y = baseS * 0.2 * t;
+        p.mesh.position.y = p.mesh.userData.baseY + baseS * 0.2 * t;
       }
     }
   }
@@ -220,13 +261,17 @@ export class Ball {
     const particle = new THREE.Mesh(this.trailGeo, this.trailMat);
     const size = this.radius * (0.08 + Math.random() * 0.12);
     const spread = this.radius * 0.6;
+    const px = this.pivot.position.x + (Math.random() - 0.5) * spread;
+    const pz = this.pivot.position.z + (Math.random() - 0.5) * spread;
+    const groundH = this.groundQuery(px, pz).height;
     particle.position.set(
-      this.pivot.position.x + (Math.random() - 0.5) * spread,
-      0.02 + size * 0.5,
-      this.pivot.position.z + (Math.random() - 0.5) * spread,
+      px,
+      groundH + 0.02 + size * 0.5,
+      pz,
     );
     particle.scale.setScalar(size);
     particle.userData.baseScale = size;
+    particle.userData.baseY = groundH + 0.02 + size * 0.5;
     particle.scale.y *= 0.4;
 
     const life = 2.0 + Math.random() * 1.5;

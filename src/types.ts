@@ -16,3 +16,5 @@ export interface NPCConfig {
   scale: number;
   positions: [number, number][];
 }
+
+export type GroundQuery = (x: number, z: number) => { height: number; normal: THREE.Vector3 };

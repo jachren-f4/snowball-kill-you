@@ -19,15 +19,18 @@ Katamari Damacy-style 3D browser game. Roll a growing snowball through a park, c
 src/
   main.ts          — Entry point, creates and starts Game
   Game.ts          — Scene setup, game loop, collision detection, lighting
-  Ball.ts          — Snowball physics, rolling, gravity, trail particles, stumble
-  Park.ts          — FBX model loading, material recoloring, item placement, environment
+  Ball.ts          — Snowball physics, rolling, gravity, trail particles, stumble, speed scaling
+  Park.ts          — FBX/GLB model loading, material recoloring, item placement, environment, NPC spawning
+  NPC.ts           — Brainrot NPC characters: wandering AI, smooth turning, waddle animation
   Controls.ts      — Keyboard (WASD/arrows) + mobile touch joystick
   FollowCamera.ts  — Third-person camera, scales with ball size, mobile zoom
-  types.ts         — Collectible interface
+  types.ts         — Collectible and NPCConfig interfaces
 
 public/
   CNAME                    — Custom domain config
   models/quaternius/       — ~40 FBX models (trees, rocks, bushes, flora)
+  models/brainrot/         — Italian brainrot character models (GLB/FBX + textures)
+  models/brainrot/originals/ — Full-res original textures (gitignored, local backup)
   models/nature/           — Kenney GLB nature kit (unused, kept for reference)
   models/furniture/        — Kenney GLB furniture kit (unused, kept for reference)
 
@@ -43,11 +46,12 @@ public/
   - Item size >= threshold → stumble (bounce back or hop over based on size ratio)
 - Camera-relative controls: input direction transformed by camera's world direction
 - FBX models use embedded materials with very dark colors — `brightenMaterials()` remaps by material name using `MATERIAL_COLORS` dictionary
+- NPC system: GLB/FBX loading with texture application, auto-scale calibration, wandering AI with smooth turning, waddle animation with turn-wobble
 
 ## Key Constants
 
 - Ball starting radius: 0.5
-- Ball speed: 40 units/s, damping: 5
+- Ball base speed: 40 units/s, damping: 5 (speed scales with √growth at 50% compensation)
 - Gravity: -25
 - Park bounds: ±48 units
 - Growth per item: `itemSize × 0.08`
@@ -74,12 +78,19 @@ The `rm -f package-lock.json` step is needed because CI generates a fresh lockfi
 
 ## 3D Models
 
-Only **Quaternius FBX models** are used (centimeter units, scaled 0.004–0.04):
+**Quaternius FBX models** (centimeter units, scaled 0.004–0.04):
 - Trees: CommonTree, BirchTree, PineTree, Willow (with autumn variants)
 - Flora: Flowers, Grass, Plants, Bush, BushBerries
 - Terrain: Rock (5 variants + moss), WoodLog, TreeStump, Lilypad
 
 Materials are recolored via name matching in `MATERIAL_COLORS` (Park.ts) because FBX embedded colors are extremely dark (Kd ~0.07-0.12 in linear space).
+
+**Italian Brainrot NPCs** (wandering characters, collectible/stumble-able):
+- Capuchino Assassino — GLB, size 1.5, 2 spawns
+- Tralalero Tralala — FBX + 1024px base color texture, size 2.5, 2 spawns
+- La Vaca Saturno — FBX + 1024px base color texture, size 3.5, 1 spawn
+
+NPCs wander randomly (retarget every 3-7s), smooth-turn with lerp (rate 4/s), and have a plushy waddle animation (bounce + side rock + forward tilt) that amplifies during sharp turns. Auto-scaled at load time to match target size. Original full-res textures backed up in `originals/` (gitignored).
 
 ## Mobile Support
 

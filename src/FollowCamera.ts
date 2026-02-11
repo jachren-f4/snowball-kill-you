@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GroundQuery } from './types';
 
 const isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
   || ('ontouchstart' in window && window.innerWidth < 1024);
@@ -9,13 +10,19 @@ export class FollowCamera {
   private targetAngle = Math.PI;
   private distanceMult: number;
   private heightMult: number;
+  private smoothLookAhead = new THREE.Vector3();
+  private groundQuery: GroundQuery | null = null;
 
   constructor(aspect: number) {
-    this.camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 200);
+    this.camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 300);
     this.camera.position.set(0, 4, 12);
     // Pull camera back on mobile for better visibility
     this.distanceMult = isMobile ? 1.5 : 1.0;
     this.heightMult = isMobile ? 1.4 : 1.0;
+  }
+
+  setGroundQuery(query: GroundQuery) {
+    this.groundQuery = query;
   }
 
   update(
@@ -38,10 +45,25 @@ export class FollowCamera {
 
     const camX = ballPosition.x - Math.sin(this.currentAngle) * distance;
     const camZ = ballPosition.z - Math.cos(this.currentAngle) * distance;
-    const camY = ballPosition.y + height;
+    let camY = ballPosition.y + height;
+
+    // Keep camera above terrain at its own position to prevent clipping through ground
+    if (this.groundQuery) {
+      const terrainAtCam = this.groundQuery(camX, camZ).height;
+      camY = Math.max(camY, terrainAtCam + 1.5);
+    }
 
     const targetPos = new THREE.Vector3(camX, camY, camZ);
     this.camera.position.lerp(targetPos, 4 * delta);
-    this.camera.lookAt(ballPosition);
+
+    // Smoothed look-ahead so camera doesn't jerk when direction changes
+    const targetAhead = new THREE.Vector3();
+    if (moveDir.lengthSq() > 0.01) {
+      targetAhead.copy(moveDir).normalize().multiplyScalar(ballRadius * 1.0);
+    }
+    this.smoothLookAhead.lerp(targetAhead, 2 * delta);
+
+    const lookTarget = ballPosition.clone().add(this.smoothLookAhead);
+    this.camera.lookAt(lookTarget);
   }
 }

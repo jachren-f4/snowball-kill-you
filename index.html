@@ -75,6 +75,63 @@
       50% { opacity: 1; }
     }
 
+    /* Multiplayer UI */
+    #multiplayer-ui {
+      display: none;
+      margin-top: 30px;
+      text-align: center;
+    }
+    #multiplayer-ui button {
+      padding: 10px 24px;
+      margin: 6px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.15);
+      color: white;
+      font-size: 16px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #multiplayer-ui button:hover {
+      background: rgba(255,255,255,0.3);
+    }
+    #join-code-input {
+      padding: 10px 14px;
+      margin: 6px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.3);
+      color: white;
+      font-size: 18px;
+      font-family: inherit;
+      text-align: center;
+      width: 100px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+    }
+    #join-code-input::placeholder {
+      color: rgba(255,255,255,0.4);
+      letter-spacing: 2px;
+    }
+    #room-code-display {
+      display: none;
+      margin-top: 10px;
+    }
+    #room-code-text {
+      font-size: 36px;
+      font-weight: bold;
+      letter-spacing: 8px;
+      color: #ffd700;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    #connection-status {
+      display: none;
+      margin-top: 10px;
+      font-size: 16px;
+      opacity: 0.8;
+    }
+
     /* Mobile styles */
     @media (hover: none) and (pointer: coarse) {
       #joystick-zone { display: block; }
@@ -99,6 +156,25 @@
     <h1>Snowball Kill You</h1>
     <p>Roll through the park and crush everything!</p>
     <p class="tap">Loading models...</p>
+
+    <div id="multiplayer-ui">
+      <div>
+        <button id="solo-btn">Solo Play</button>
+      </div>
+      <div style="margin-top: 10px;">
+        <button id="create-room-btn">Create Room</button>
+      </div>
+      <div style="margin-top: 6px;">
+        <input id="join-code-input" type="text" maxlength="4" placeholder="CODE">
+        <button id="join-room-btn">Join</button>
+      </div>
+      <div id="room-code-display">
+        <p style="font-size: 14px; opacity: 0.7;">Room Code:</p>
+        <p id="room-code-text"></p>
+      </div>
+      <p id="connection-status"></p>
+    </div>
+
     <p class="controls-hint desktop" style="margin-top: 20px; font-size: 14px; opacity: 0.5;">
       WASD / Arrow keys to move
     </p>
