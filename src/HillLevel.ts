@@ -60,18 +60,6 @@ function createFlag(scene: THREE.Scene, x: number, z: number, groundY: number) {
   scene.add(flag);
 }
 
-function createArrowMarker(scene: THREE.Scene, x: number, z: number, groundY: number, rotY: number) {
-  // Simple arrow pointing toward the half-pipe using a cone
-  const coneGeo = new THREE.ConeGeometry(0.5, 1.5, 6);
-  const coneMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, roughness: 0.5 });
-  const cone = new THREE.Mesh(coneGeo, coneMat);
-  cone.position.set(x, groundY + 1, z);
-  cone.rotation.z = -Math.PI / 2;
-  cone.rotation.y = rotY;
-  cone.castShadow = true;
-  scene.add(cone);
-}
-
 // === ITEM DEFINITIONS ===
 
 interface ItemDef {
@@ -122,15 +110,9 @@ export async function createHillLevel(
   // Flag on hilltop
   createFlag(scene, 20, 25, getY(20, 25));
 
-  // Arrow markers near the half-pipe entrance
-  createArrowMarker(scene, -8, 18, getY(-8, 18), Math.PI / 2);
-  createArrowMarker(scene, 8, 18, getY(8, 18), Math.PI / 2);
-
   const collectibles: Collectible[] = [];
 
   const items: ItemDef[] = [
-    // === VALLEY FLOOR: lots of small/medium items (temptation) ===
-    // Valley is centered around (0, 25), small items to lure collecting
     {
       create: () => getModel('qFlowers', 0.004),
       size: 0.15,
@@ -177,7 +159,7 @@ export async function createHillLevel(
       randomRotY: true,
     },
 
-    // === VALLEY medium items (more temptation, grow bigger = harder to climb) ===
+    // === MEDIUM (size 0.6-0.8) ===
     {
       create: () => randomModel(['qRock1', 'qRock2', 'qRock3', 'qRock4', 'qRock5'], 0.01),
       size: 0.6,

@@ -57,9 +57,6 @@ export class Terrain {
     // Big hill in one quadrant
     h += gaussian(x, z, 20, 25, 18, 18, 12);
 
-    // Half-pipe / valley (negative height, elongated along X)
-    h += gaussian(x, z, 0, 25, 12, 6, -7);
-
     // Small rolling hills
     h += gaussian(x, z, -20, -15, 10, 10, 4);
     h += gaussian(x, z, 15, -25, 8, 8, 3);
