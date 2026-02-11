@@ -154,7 +154,11 @@ export class Game {
         const hostStart = () => {
           this.started = true;
           startScreen.style.display = 'none';
+          // Send start signal multiple times to ensure delivery
+          // (data channels may not be fully ready on the first send)
           this.network!.sendGameStart();
+          setTimeout(() => this.network?.sendGameStart(), 100);
+          setTimeout(() => this.network?.sendGameStart(), 300);
           startScreen.removeEventListener('click', hostStart);
           startScreen.removeEventListener('touchstart', hostStart);
         };
@@ -176,6 +180,13 @@ export class Game {
 
     this.network.onBallState((state: BallState) => {
       this.remoteBall?.updateFromNetwork(state);
+      // Fallback: if guest receives ball data but game hasn't started,
+      // the GameStart message was likely dropped (data channel race).
+      // Auto-start the game.
+      if (!this.started && !this.network?.isHost) {
+        this.started = true;
+        startScreen.style.display = 'none';
+      }
     });
 
     this.network.onCollectEvent((event: CollectEvent) => {

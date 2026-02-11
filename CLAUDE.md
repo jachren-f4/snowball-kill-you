@@ -8,6 +8,7 @@ Katamari Damacy-style 3D browser game. Roll a growing snowball through a park, c
 ## Tech Stack
 
 - **Three.js** (0.162) — 3D rendering
+- **Trystero** — P2P WebRTC multiplayer (Nostr signaling, no server)
 - **TypeScript** — strict mode
 - **Vite** (5.4) — dev server and bundler
 - **GitHub Actions** — CI/CD to GitHub Pages
@@ -18,13 +19,18 @@ Katamari Damacy-style 3D browser game. Roll a growing snowball through a park, c
 ```
 src/
   main.ts          — Entry point, creates and starts Game
-  Game.ts          — Scene setup, game loop, collision detection, lighting
+  Game.ts          — Scene setup, game loop, collision detection, lighting, multiplayer integration
   Ball.ts          — Snowball physics, rolling, gravity, trail particles, stumble, speed scaling
-  Park.ts          — FBX/GLB model loading, material recoloring, item placement, environment, NPC spawning
-  NPC.ts           — Brainrot NPC characters: wandering AI, smooth turning, waddle animation
+  Park.ts          — Flat park level (legacy, not currently used — HillLevel.ts is active)
+  HillLevel.ts     — Hill terrain level with Gaussian bumps, item/NPC placement at terrain height
+  Terrain.ts       — Procedural terrain mesh with vertex colors (grass→snow gradient)
+  models.ts        — FBX/GLB model loading, material recoloring, NPC loading, placement helpers
+  NPC.ts           — Brainrot NPC characters: wandering AI, smooth turning, waddle animation, network sync
+  Network.ts       — Trystero P2P WebRTC wrapper: room management, ball/collect/NPC/start channels
+  RemoteBall.ts    — Visual-only remote player snowball with lerp interpolation
   Controls.ts      — Keyboard (WASD/arrows) + mobile touch joystick
   FollowCamera.ts  — Third-person camera, scales with ball size, mobile zoom
-  types.ts         — Collectible and NPCConfig interfaces
+  types.ts         — Collectible, NPCConfig, GroundQuery interfaces
 
 public/
   CNAME                    — Custom domain config
@@ -47,6 +53,10 @@ public/
 - Camera-relative controls: input direction transformed by camera's world direction
 - FBX models use embedded materials with very dark colors — `brightenMaterials()` remaps by material name using `MATERIAL_COLORS` dictionary
 - NPC system: GLB/FBX loading with texture application, auto-scale calibration, wandering AI with smooth turning, waddle animation with turn-wobble
+- Multiplayer: P2P via Trystero WebRTC, host/guest roles, ball state synced every frame, NPC state at 10fps from host. See `docs/features/multiplayer.md` for full details
+  - DO NOT sync camera, controls, trail particles, or wobble — these are player-local
+  - NPC network sync MUST include Y position (terrain height) or guest NPCs clip through hills
+  - `#multiplayer-ui` CSS is `display:none` — must set `style.display='block'` not `''` to show it
 
 ## Key Constants
 
