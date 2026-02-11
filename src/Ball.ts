@@ -136,7 +136,7 @@ export class Ball {
     // Bigger ball = harder to push manually (inverse sqrt scaling)
     // Downhill speed is unaffected — only player input gets weaker
     const growthRatio = this.radius / this.startRadius;
-    const moveSpeed = this.baseSpeed * Math.pow(this.startRadius / this.radius, 0.5);
+    const moveSpeed = this.baseSpeed * Math.pow(this.startRadius / this.radius, 0.25);
 
     if (direction.lengthSq() > 0.001) {
       this.velocity.x += direction.x * moveSpeed * delta;

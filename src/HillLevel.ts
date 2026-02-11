@@ -364,7 +364,8 @@ export async function createHillLevel(
   }
 
   // Spawn NPC characters
-  const npcs = await spawnNPCs(scene, NPC_CONFIGS, getY);
+  const groundQuery = (x: number, z: number) => terrain.getGroundInfo(x, z);
+  const npcs = await spawnNPCs(scene, NPC_CONFIGS, getY, groundQuery);
   for (const npc of npcs) {
     collectibles.push(npc.collectible);
   }

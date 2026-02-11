@@ -265,6 +265,7 @@ export async function spawnNPCs(
   scene: THREE.Scene,
   configs: NPCConfig[],
   getGroundY?: (x: number, z: number) => number,
+  groundQuery?: (x: number, z: number) => { height: number; normal: THREE.Vector3 },
 ): Promise<NPC[]> {
   const npcs: NPC[] = [];
 
@@ -281,7 +282,10 @@ export async function spawnNPCs(
       const [x, z] = config.positions[i];
       const model = i === 0 ? baseModel : cloneNPCModel(baseModel);
       const npc = new NPC(model, config.size, config.name, config.speed, x, z);
-      if (getGroundY) {
+      if (groundQuery) {
+        npc.setGroundQuery(groundQuery);
+        npc.getMesh().position.y = groundQuery(x, z).height;
+      } else if (getGroundY) {
         npc.getMesh().position.y = getGroundY(x, z);
       }
       scene.add(npc.getMesh());

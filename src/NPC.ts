@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { Collectible } from './types';
 
+export type GroundQuery = (x: number, z: number) => { height: number; normal: THREE.Vector3 };
+
 export class NPC {
   readonly collectible: Collectible;
   private group: THREE.Group;
@@ -12,6 +14,8 @@ export class NPC {
   private turnWobble = 0;
   private networkControlled = false;
   private networkBaseY = 0;
+  private groundQuery: GroundQuery | null = null;
+  private slopeQuat = new THREE.Quaternion();
 
   constructor(
     model: THREE.Object3D,
@@ -36,6 +40,10 @@ export class NPC {
     this.pickTarget();
   }
 
+  setGroundQuery(query: GroundQuery) {
+    this.groundQuery = query;
+  }
+
   private pickTarget() {
     const bounds = 44;
     this.target.set(
@@ -52,10 +60,11 @@ export class NPC {
     // In network-controlled mode, skip AI but still animate
     if (this.networkControlled) {
       this.bobPhase += delta * 6;
-      // Use host's Y as base, add local bob animation on top
       this.group.position.y = this.networkBaseY;
-      this.group.rotation.z = Math.sin(this.bobPhase) * 0.18;
-      this.group.rotation.x = Math.sin(this.bobPhase * 2) * 0.06;
+      this.applyOrientation(
+        Math.sin(this.bobPhase) * 0.18,
+        Math.sin(this.bobPhase * 2) * 0.06,
+      );
       return;
     }
 
@@ -85,7 +94,6 @@ export class NPC {
       this.turnWobble = Math.min(this.turnWobble, 1.5);
       // Lerp toward target angle
       this.facingAngle += angleDiff * Math.min(delta * 4, 1);
-      this.group.rotation.y = this.facingAngle;
     } else {
       this.pickTarget();
     }
@@ -95,27 +103,65 @@ export class NPC {
     pos.x = THREE.MathUtils.clamp(pos.x, -bounds, bounds);
     pos.z = THREE.MathUtils.clamp(pos.z, -bounds, bounds);
 
+    // Get terrain height
+    let groundY = 0;
+    if (this.groundQuery) {
+      const info = this.groundQuery(pos.x, pos.z);
+      groundY = info.height;
+      // Smoothly lerp slope quaternion toward terrain normal alignment
+      const targetQuat = this.quatFromNormal(info.normal);
+      this.slopeQuat.slerp(targetQuat, Math.min(delta * 8, 1));
+    }
+
     // Decay turn wobble
     this.turnWobble *= Math.exp(-delta * 5);
 
     // Plushy waddle animation (amplified during turns)
     this.bobPhase += delta * (6 + this.turnWobble * 4);
     // Bounce up on each step (higher during turns)
-    pos.y = Math.abs(Math.sin(this.bobPhase)) * (0.25 + this.turnWobble * 0.15);
-    // Side-to-side rock (main wobble, exaggerated during turns)
-    this.group.rotation.z = Math.sin(this.bobPhase) * (0.18 + this.turnWobble * 0.25);
-    // Forward-back tilt synced with steps
-    this.group.rotation.x = Math.sin(this.bobPhase * 2) * (0.06 + this.turnWobble * 0.1);
+    const bobY = Math.abs(Math.sin(this.bobPhase)) * (0.25 + this.turnWobble * 0.15);
+    pos.y = groundY + bobY;
+
+    // Apply slope + waddle orientation
+    const wobbleZ = Math.sin(this.bobPhase) * (0.18 + this.turnWobble * 0.25);
+    const wobbleX = Math.sin(this.bobPhase * 2) * (0.06 + this.turnWobble * 0.1);
+    this.applyOrientation(wobbleZ, wobbleX);
+  }
+
+  /** Build a quaternion that aligns the up-vector (0,1,0) to the given terrain normal */
+  private quatFromNormal(normal: THREE.Vector3): THREE.Quaternion {
+    const up = new THREE.Vector3(0, 1, 0);
+    const q = new THREE.Quaternion();
+    q.setFromUnitVectors(up, normal);
+    return q;
+  }
+
+  /** Combine terrain slope, facing angle, and waddle into final orientation */
+  private applyOrientation(wobbleZ: number, wobbleX: number) {
+    // Start with slope alignment
+    const q = this.slopeQuat.clone();
+    // Apply facing direction (Y rotation)
+    const yaw = new THREE.Quaternion();
+    yaw.setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.facingAngle);
+    q.multiply(yaw);
+    // Apply waddle on top (local Z and X rotations)
+    const waddle = new THREE.Euler(wobbleX, 0, wobbleZ);
+    const waddleQ = new THREE.Quaternion().setFromEuler(waddle);
+    q.multiply(waddleQ);
+    this.group.quaternion.copy(q);
   }
 
   setNetworkPosition(x: number, y: number, z: number, ry: number) {
     this.networkControlled = true;
     this.group.position.x = x;
     this.group.position.z = z;
-    this.group.rotation.y = ry;
     this.facingAngle = ry;
-    // Y is set by bob animation in update(), but we store the base Y
     this.networkBaseY = y;
+    // Update slope from terrain if available
+    if (this.groundQuery) {
+      const info = this.groundQuery(x, z);
+      this.slopeQuat.slerp(this.quatFromNormal(info.normal), 0.3);
+    }
   }
 
   getNetworkState(): { x: number; y: number; z: number; ry: number } {
